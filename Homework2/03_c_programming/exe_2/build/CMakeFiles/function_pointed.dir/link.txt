@@ -1,0 +1,1 @@
+/usr/bin/cc -rdynamic CMakeFiles/function_pointed.dir/function_pointer_array_test.c.o -o function_pointed 
