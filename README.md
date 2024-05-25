@@ -20,6 +20,25 @@ Contiene una serie di cartelle dei vari codici proposti a lezione durante l'anno
 
 - Homework7 : Codice relativo alla gestione della memoria, contiene una serie di implementazioni fatte durante il corso
 
+## Progetto : Oscilloscopio
+
+### Obiettivo
+
+ Realizzare un oscilloscopio.
+
+### Lato PC
+
+   Deve essere possibile:
+   - [ ] Inviare informazioni come frequenza di campionamento e numero di canali
+   - [ ] Ricevere dati dall'Arduino via seriale
+
+### Lato Arduino
+
+   Deve essere possibile operare in due modalità:
+   - [ ] campionamento continuo 
+   - [ ] bufferizzare i dati per poi essere inviati a burst
+
+Tutte le comunicazioni avverranno in maniera asincrona tramite UART.
 
 ## Progetto : Misuratore di corrente Arduino
 
