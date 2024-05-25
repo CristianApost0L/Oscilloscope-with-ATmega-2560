@@ -29,8 +29,8 @@ Contiene una serie di cartelle dei vari codici proposti a lezione durante l'anno
 ### Lato PC
 
    Deve essere possibile:
-   - [ ] Inviare informazioni come frequenza di campionamento e numero di canali
-   - [ ] Ricevere dati dall'Arduino via seriale
+   - [X] Inviare informazioni come frequenza di campionamento e numero di canali
+   - [X] Ricevere dati dall'Arduino via seriale
 
 ### Lato Arduino
 
