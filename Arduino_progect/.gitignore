@@ -1,0 +1,10 @@
+# Compiled source
+*.hex
+*.o
+
+# Output file
+*.plt
+
+
+# IDE specific
+.vscode/
