@@ -1,4 +1,4 @@
-BINS=test.hex
+BINS= main.hex
 
 OBJS=../avr_common/uart.o
 

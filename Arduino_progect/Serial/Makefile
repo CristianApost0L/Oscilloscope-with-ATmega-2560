@@ -2,13 +2,13 @@
 CC = gcc
 
 # Compiler flags
-CFLAGS = -Wall -Wextra -std=c99
+CFLAGS = -Wall -Wextra -std=c99 -g
 
 # Target executable
-BINS = serial_linux
+BINS = main
 
 # Source files
-SRCS = serial_linux.c
+SRCS = main.c serial_linux.c 
 HDRS = serial_linux.h
 
 # Object files
@@ -21,7 +21,7 @@ $(BINS): $(OBJS)
 
 # Compile source files
 %.o: %.c $(HDRS)
-	$(CC) $(CFLAGS) -c $<
+	$(CC) $(CFLAGS) -c $< 
 
 # Clean objects and executable
 clean:
