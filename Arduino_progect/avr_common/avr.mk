@@ -6,7 +6,6 @@ AVRDUDE=avrdude
 
 
 CC_OPTS_GLOBAL=\
--O3\
 -funsigned-char\
 -funsigned-bitfields\
 -fshort-enums\
