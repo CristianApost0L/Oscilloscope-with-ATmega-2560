@@ -1,12 +1,18 @@
+#pragma once
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <termios.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
+#include <stdbool.h>
+#include <assert.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,3 +30,13 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+
+void printProgressBar(int currentIteration, int totalIterations);
+void handle_sigint(int sig);
+
+// Struct per la ricezione dei dati
+typedef struct {
+  uint16_t sample_frequency;
+  uint8_t channels;
+  uint8_t mode;
+} __attribute__((packed)) __serial_data__;
