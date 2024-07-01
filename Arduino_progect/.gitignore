@@ -5,6 +5,8 @@
 # Output file
 *.plt
 
+# Executables
+*~
 
 # IDE specific
 .vscode/
