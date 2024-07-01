@@ -1,100 +1,115 @@
-#include <util/delay.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdint.h>
-#include <avr/io.h>
-#include <avr/interrupt.h>
 #include "../avr_common/uart.h"
 
-// configuration bits for PWM
-// fast PWM, 8 bit, non inverted
-// output compare set low
-#define TCCRA_MASK (1<<WGM10)|(1<<COM1C0)|(1<<COM1C1)
-#define TCCRB_MASK ((1<<WGM12)|(1<<CS10))   
+// Struct per la ricezione dei dati
+typedef struct {
+  uint16_t sample_frequency;
+  uint8_t channels;
+  uint8_t mode;
+} __attribute__((packed)) __serial_data__;
+__serial_data__ rcv;
 
+// Variabili globali
+volatile uint8_t current_channel = 0;
+volatile uint16_t adc_values[8];
+volatile bool start_sampling = false;
 
-// our interrupt routine installed in
-// interrupt vector position
-// corresponding to output compare
-// of timer 5
-ISR(TIMER5_COMPA_vect) {
+void timer1_init(void);
+void adc_init(void);
+ISR(TIMER1_COMPA_vect);
+ISR(ADC_vect);
 
+void adc_init(void) {
+  ADMUX = (1 << REFS0); // Usa AVCC come riferimento di tensione
+  ADCSRA = (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0); // Abilita ADC e prescaler 128, 125 kHz di frequenza di campionamento
+  ADCSRA |= (1 << ADIE); // Abilita l'interrupt ADC
 }
 
-// Inizializzazione del timer5
-void timer5_init(int timer_duration_ms){
-  // configure timer
-  // set the prescaler to 1024
-  TCCR5A = 0;
-  TCCR5B = (1 << WGM52) | (1 << CS50) | (1 << CS52); 
-  
-  // at this count rate
-  // 1 ms will correspond do 15.62 counts
-  // we set the output compare to an appropriate
-  // value so that when the counter reaches that value
-  // the interrupt will be triggered
-  uint16_t ocrval=(uint16_t)(((F_CPU / 1024) * (timer_duration_ms/1000)) - 1);
-
-  OCR5A = ocrval;
-
-  // clear int
-  cli();
-  TIMSK5 |= (1 << OCIE5A);  // enable the timer interrupt
-  // enable int
-  sei();
+// Function to initialize Timer1, used update current reading every second
+void timer1_init(void) {
+  // Set CTC mode (Clear Timer on Compare Match)
+  TCCR1B |= (1 << WGM12);
+  // Set compare value for 1 Hz interrupt (assuming 16 MHz clock and 1024 prescaler)
+  OCR1A = (F_CPU / (1024 * rcv.sample_frequency) - 1);
+  // Enable Timer1 compare interrupt
+  TIMSK1 |= (1 << OCIE1A);
+  // Start Timer1 with 1024 prescaler
+  TCCR1B |= (1 << CS12) | (1 << CS10);
 }
 
-void timer1_init(){
-  // we will use timer 1
-  TCCR1A=TCCRA_MASK;
-  TCCR1B=TCCRB_MASK;
-  // clear all higher bits of output compare for timer
-  OCR1AH=0;
-  OCR1BH=0;
-  OCR1CH=0;
-  OCR1CL=1;
+// Ogni interrupt del Timer1 cambia il canale ADC e avvia una conversione
+ISR(TIMER1_COMPA_vect) {
+  // Cambia il canale ADC
+  ADMUX = (ADMUX & 0xF8) | (current_channel & 0x07);
+  ADCSRA |= (1 << ADSC); // Avvia una conversione ADC
 }
 
+// Lettura ADC una volta che la conversione è completata
+ISR(ADC_vect) {
+  adc_values[current_channel] = ADC; // Leggi il valore convertito
+  current_channel = (current_channel + 1) % rcv.channels; // Passa al prossimo canale
+}
+
+// In buffer mode tramite UART viene avviato il sampling
+ISR(USART_RX_vect) {
+  start_sampling = true;
+}
 
 int main(void){
-  printf_init(); // Inizializzazione per la UART
+  char buffer[1000];
+  int size = 0;
+
+  cli(); 
+  UART_init(); // Inizializzazione per la UART
+  
+  // Inizializzazione della struct di ricezione
+  uint8_t usart_rx_buffer[4];
+  UART_getString(usart_rx_buffer);
+
+  rcv.sample_frequency = *((uint16_t*)&usart_rx_buffer);
+  rcv.channels = usart_rx_buffer[2];
+  rcv.mode = usart_rx_buffer[3];
+
+  rcv.sample_frequency = 1000;
+  rcv.channels = 8;
+  rcv.mode = 1;
+
+  adc_init(); // Inizializzazione dell'ADC
   timer1_init(); // Inizializzazione del Timer1
+  sei();
 
-  // the LED is connected to pin 13
-  // that is the bit 5 of port b, we set it as output
-  const uint8_t mask=(1<<7);
-  // we configure the pin as output
-  DDRB |= mask;//mask;
+  if(rcv.mode != 0) {
+    start_sampling = false;
+  }
 
-  int sampling_frequenzy;
-  int cannel;
-  int total_time;
-
-  // Preparazione del buffer di ricezione/invio
-  char buf[1024];
-  memset(buf, 0, 1024);
-  int l=0;
-  do{
-    buf[l] = usart_getchar();
-  }while(buf[l++]!=0);
-
-  // Vengono letti e salvati i valori trasmessi dal PC
-  sscanf(buf, "%d %d %d", &sampling_frequenzy, &cannel);
-
-  uint8_t intensity=0;
-  while(1){
-
-    // we write on the output compare register a value
-    // that will be proportional to the opposite of the
-    // duty_cycle
-
-    OCR1CL=intensity; 
-
-    memset(buf, 0, 1024);
-    sprintf(buf,"%d\n",(int) OCR1CL);
-    usart_pstr((uint8_t*)buf);
-
-    _delay_ms(100); // from delay.h, wait 1 sec
-    intensity+=2;
+  while (1) {
+    //Streaming mode
+    if(!rcv.mode) {
+      memset(buffer, 0, sizeof(buffer));
+      // Invio i valori ADC via UART
+      for (uint8_t i = 0; i < rcv.channels; i++) {
+        sprintf(buffer, "%d %u\n", i, adc_values[i]);
+        UART_putString((uint8_t*)buffer);
+      }
+    }else{
+    // Buffer mode
+      if(start_sampling) {
+        // Salvataggio dei valori ADC in un buffer per poi inviarli via UART quando pieno
+        for (uint8_t i = 0; i < rcv.channels; i++) {
+          if(size>1000) {
+            UART_putString((uint8_t*)buffer);
+            memset(buffer, 0, sizeof(buffer));
+            size = 0;
+          }
+          char buffer_2[10];
+          sprintf(buffer_2, "%c %u\n", i, adc_values[i]);
+          size+=strlen(buffer_2);
+          strcat(buffer, buffer_2);
+          memset(buffer_2, 0, sizeof(buffer_2));
+        }
+      }
+    }
   }
 }
-  
