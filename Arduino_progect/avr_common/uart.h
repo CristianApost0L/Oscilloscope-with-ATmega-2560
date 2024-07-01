@@ -6,20 +6,23 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define BAUD 19600
-#define MYUBRR F_CPU/16/BAUD-1
+#define BAUD 19200
+#define MYUBRR (F_CPU/16/BAUD-1)
 
+//! @brief initializes the uart peripheral
+void UART_init(void);
 
-void usart_init(uint16_t ubrr);
-char usart_getchar( void );
-void usart_putchar( char data );
-void usart_pstr (char *s);
-unsigned char usart_kbhit(void);
-int usart_putchar_printf(char var, FILE *stream);
-
-
-void printf_init(void);
+//! @brief sends a char on the peripheral
 void UART_putChar(uint8_t c);
+
+//! @brief reads a char from the peripheral
 uint8_t UART_getChar(void);
+
+//! @brief high level function (exposed)
+//!        reads a string until the first newline or 0
+//!        returns the size read
 uint8_t UART_getString(uint8_t* buf);
+
+//! @brief high level function (exposed)
+//!        writes a string until the first newline or 0
 void UART_putString(uint8_t* buf);

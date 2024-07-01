@@ -1,57 +1,14 @@
 #include "uart.h"
 
-static FILE mystdout = FDEV_SETUP_STREAM(usart_putchar_printf, NULL, _FDEV_SETUP_WRITE);
+void UART_init(void) {
+  // Set baud rate
+  UBRR0H = (uint8_t)(MYUBRR>>8);
+  UBRR0L = (uint8_t)MYUBRR;
 
-void usart_init( uint16_t ubrr) {
-    // Set baud rate
-    UBRR0H = (uint8_t)(ubrr>>8);
-    UBRR0L = (uint8_t)ubrr;
+  UCSR0C = (1<<UCSZ01) | (1<<UCSZ00); /* 8-bit data */ 
+  UCSR0B = (1<<RXEN0) | (1<<TXEN0) | (1<<RXCIE0);   /* Enable RX and TX */  
 
-    UCSR0C = _BV(UCSZ01) | _BV(UCSZ00); /* 8-bit data */ 
-    UCSR0B = _BV(RXEN0) | _BV(TXEN0) | _BV(RXCIE0);   /* Enable RX and TX */  
 }
-void usart_putchar(char data) {
-    // Wait for empty transmit buffer
-    while ( !(UCSR0A & (_BV(UDRE0))) );
-    // Start transmission
-    UDR0 = data; 
-}
-char usart_getchar(void) {
-    // Wait for incoming data
-    while ( !(UCSR0A & (_BV(RXC0))) );
-    // Return the data
-    return UDR0;
-}
-unsigned char usart_kbhit(void) {
-    //return nonzero if char waiting polled version
-    unsigned char b;
-    b=0;
-    if(UCSR0A & (1<<RXC0)) b=1;
-    return b;
-}
-void usart_pstr(char *s) {
-    // loop through entire string
-    while (*s) { 
-        usart_putchar(*s);
-        s++;
-    }
-}
- 
-// this function is called by printf as a stream handler
-int usart_putchar_printf(char var, FILE *stream) {
-    // translate \n to \r for br@y++ terminal
-    if (var == '\n') usart_putchar('\r');
-    usart_putchar(var);
-    return 0;
-}
-
-void printf_init(void){
-  stdout = &mystdout;
-  
-  // fire up the usart
-  usart_init ( MYUBRR );
-}
-
 
 void UART_putChar(uint8_t c){
   // wait for transmission completed, looping on status bit
@@ -66,11 +23,9 @@ uint8_t UART_getChar(void){
   while ( !(UCSR0A & (1<<RXC0)) );
   
   // Return the data
-  return UDR0;
+  return UDR0;   
 }
 
-// reads a string until the first newline or 0
-// returns the size read
 uint8_t UART_getString(uint8_t* buf){
   uint8_t* b0=buf; //beginning of buffer
   while(1){
