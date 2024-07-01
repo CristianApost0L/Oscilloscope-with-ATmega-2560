@@ -76,10 +76,15 @@ int main(int argc, const char** argv) {
     char buf[1024] = {0};
 
     if(!start){
+      // Dorme per 5ms
       usleep(5000);
-      memcpy(buf,&send,sizeof(__serial_data__));
+
+      char buf_send[sizeof(__serial_data__)+1];
+      memcpy(buf_send, &send, sizeof(__serial_data__));
+      buf_send[sizeof(__serial_data__)] = '\n';
+
       // Invio della struct all'Arduino
-      size_t written = write(fd, &buf, sizeof(__serial_data__)+1);
+      size_t written = write(fd, &buf_send, sizeof(__serial_data__)+1);
       if (written != sizeof(__serial_data__)+1) {
         perror("Error writing to file");
         return -1;
@@ -89,7 +94,7 @@ int main(int argc, const char** argv) {
 
     // Se il buffer mode è attivo, aspetta che l'utente invii un carattere per iniziare il sampling
     if(send.mode && !start_sampling){
-      printf("Enter a character to start sampling: ");
+      printf("Press Enter to start sampling: ");
       char c = getchar();
       size_t written = write(fd, &c, 1);
       if (written != 1) {
@@ -99,7 +104,7 @@ int main(int argc, const char** argv) {
       start_sampling = true;
 
     }else{
-
+      // Dorme per 5ms
       usleep(5000);
 
       // Lettura dei bytes provenienti dall'Arduino
