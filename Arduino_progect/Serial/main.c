@@ -5,34 +5,10 @@ FILE * file_pointer;
 const char *file_name1 = "output.plt";
 int fd;
 
-// Funzione per stampare la percentuale rimanente per il sampling
-void printProgressBar(int currentIteration, int totalIterations) {
-    int barWidth = 20; // Larghezza della barra di caricamento
-    float progress = (float)currentIteration / totalIterations;
-    int pos = barWidth * progress;
-
-    printf("[");
-    for (int i = 0; i < barWidth; ++i) {
-        if (i < pos) printf("=");
-        else if (i == pos) printf(">");
-        else printf(" ");
-    }
-    printf("] %d%%\r", (int)(progress * 100));
-    fflush(stdout);
-}
-
 // Funzione per gestire il segnale SIGINT
 void handle_sigint(int sig) {
   printf("\nCaught signal %d (SIGINT). Exiting gracefully...\n", sig);
-
-  // Invio del terminatore al file di output
-  char * terminator = "\0";
-  size_t written = write(fd, &terminator, sizeof(char));
-  
-  if (written != sizeof(char)) {
-    perror("Error writing to file");
-  }
-
+  close(fd);
   // Chiusura del file di output
   fprintf(file_pointer,"e\n\n"); 
   fclose(file_pointer);
@@ -40,33 +16,24 @@ void handle_sigint(int sig) {
 }
 
 /*
-  main <serial_file> <baudrate> <sampling_frequency> <cannel> <time_sampling>
+  main <serial_file> <baudrate> <sampling_frequency> <channel> <mode>
 */
 
 int main(int argc, const char** argv) {
   if (argc<6) {
-    printf("serial_linux <serial_file> <baudrate> <sampling_frequency> <cannel> <time_sampling>\n");
+    printf("serial_linux <serial_file> <baudrate> <sampling_frequency> <channel> <bufferd_mode 1 : 0>\n");
   }
+
   const char* serial_device=argv[1];
   int baudrate=atoi(argv[2]);
   int sampling_frequency=atoi(argv[3]);
   int channel=atoi(argv[4]);
-  int time_sampling=atoi(argv[5]);
-  int current_time = time_sampling;
+  int buffer_mode=atoi(argv[5]);
 
-  if(channel>8){
-    printf("Il numero di canali deve essere minore di 8\n");
-    return 1;
-  }
-  if(sampling_frequency>65536){
-    printf("La frequenza di campionamento deve essere minore di 65536\n");
-    return 1;
-  }
-
-  // Struct utilizzata per mandare i dati all'arduino 
-  __serial_data__ send = {0};
-  send.sample_frequency = (uint16_t) sampling_frequency;
-  send.channels = (uint8_t) channel;
+  // Verifica che i parametri siano corretti
+  assert(channel>0 && channel<=8);
+  assert(sampling_frequency>0 && sampling_frequency<=65536);
+  assert(buffer_mode==0 || buffer_mode==1);
 
   // Apre il file in modalità scrittura ("w")
   file_pointer = fopen(file_name1, "w");
@@ -91,39 +58,64 @@ int main(int argc, const char** argv) {
     exit(EXIT_FAILURE);
   }
 
+  // Struct utilizzata per mandare i dati all'arduino 
+  __serial_data__ send = {0};
+  send.sample_frequency = (uint16_t) sampling_frequency;
+  send.channels = (uint8_t) channel;
+  send.mode = (uint8_t) buffer_mode;
+
+  // Variabile per controllare se l'invio è già stato effettuato
+  bool start=false;
+
+  // Variabile per controllare se è stato inviato il carattere per iniziare il sampling
+  bool start_sampling = false;
+
   while(1) {
 
     // Preparazione del buffer di ricezione
-    char buf[1024];
-    memset(buf, 0, 1024);
+    char buf[1024] = {0};
 
-    if(current_time == time_sampling){
+    if(!start){
+      usleep(5000);
+      memcpy(buf,&send,sizeof(__serial_data__));
       // Invio della struct all'Arduino
-      size_t written = write(fd, &send, sizeof(__serial_data__));
-      if (written != sizeof(__serial_data__)) {
+      size_t written = write(fd, &buf, sizeof(__serial_data__)+1);
+      if (written != sizeof(__serial_data__)+1) {
         perror("Error writing to file");
         return -1;
       }
+      start=true;
+    }
+
+    // Se il buffer mode è attivo, aspetta che l'utente invii un carattere per iniziare il sampling
+    if(send.mode && !start_sampling){
+      printf("Enter a character to start sampling: ");
+      char c = getchar();
+      size_t written = write(fd, &c, 1);
+      if (written != 1) {
+        perror("Error writing to file");
+        return -1;
+      }
+      start_sampling = true;
+
     }else{
-      // In modalità streaming vengono salvati i dati direttamente sul file output.plt
-      printProgressBar(current_time,time_sampling);
-    }
 
-    // Lettura dei bytes provenienti dall'Arduino
-    size_t bytes_read = read(fd, buf,1024);
-    if (bytes_read == 0) {
-      perror("Error reading from file");
-      return -1;
-    }
-    
-    // Scrittura dei bytes provenienti dall'Arduino sul file di output 
-    int bytes_write = fputs(buf,file_pointer);
-    if (bytes_write == EOF) {
-      perror("Error writing to output file");
-      return -1;
-    }
+      usleep(5000);
 
-    current_time--;
+      // Lettura dei bytes provenienti dall'Arduino
+      size_t bytes_read = read(fd, buf,1024);
+      if (bytes_read == 0) {
+        perror("Error reading from file");
+        return -1;
+      }
+      
+      // Scrittura dei bytes provenienti dall'Arduino sul file di output 
+      int bytes_write = fputs(buf,file_pointer);
+      if (bytes_write == EOF) {
+        perror("Error writing to output file");
+        return -1;
+      }
+    }
   }
   
   exit(EXIT_SUCCESS);
