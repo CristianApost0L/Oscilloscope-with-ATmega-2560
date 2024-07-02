@@ -1,6 +1,6 @@
 #include "uart.h"
 
-void UART_init(void) {
+void UART_init(void){
   // Set baud rate
   UBRR0H = (uint8_t)(MYUBRR>>8);
   UBRR0L = (uint8_t)MYUBRR;
@@ -23,9 +23,12 @@ uint8_t UART_getChar(void){
   while ( !(UCSR0A & (1<<RXC0)) );
   
   // Return the data
-  return UDR0;   
+  return UDR0;
+    
 }
 
+// reads a string until the first newline or 0
+// returns the size read
 uint8_t UART_getString(uint8_t* buf){
   uint8_t* b0=buf; //beginning of buffer
   while(1){
