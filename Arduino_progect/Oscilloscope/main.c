@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <util/delay.h>
 #include "../avr_common/uart.h"
 
 // Struct per la ricezione dei dati
@@ -9,14 +10,13 @@ typedef struct {
   uint8_t channels;
   uint8_t mode;
 } __attribute__((packed)) __serial_data__;
-volatile __serial_data__ rcv;
 
 // Variabili globali
+volatile __serial_data__ rcv = {0};
 volatile uint8_t current_channel = 0;
 volatile uint16_t adc_values[8];
 volatile bool start_sampling = false;
 volatile bool arrived_struct = false;
-volatile bool on = false;
 volatile uint8_t intensity = 0;
 
 void timer1_init(void);
@@ -59,7 +59,7 @@ void timer1_init(void) {
 
 // Interrupt del Timer1 per cambiare il duty cycle
 ISR(TIMER1_COMPC_vect) {
-  intensity++;
+  intensity+=1;
 }
 
 // Ogni interrupt del Timer2 cambia il canale ADC e avvia una conversione
@@ -81,9 +81,8 @@ ISR(USART0_RX_vect) {
 }
 
 int main(void){
-  uint8_t buffer[1000];
-  uint8_t buffer_2[10];
-  int size = 0;
+  uint8_t buffer[7*20];
+  int size=0;
 
   // Il LED è collegato al pin 13 dell'Arduino
   // è il bit 7 della porta B
@@ -109,38 +108,33 @@ int main(void){
       sei();
       arrived_struct = true;
       memset(buffer, 0, sizeof(buffer));
-    }
-
-    // Se il buffer mode è attivo, aspetta che l'utente invii qualcosa per iniziare il sampling
-    if(rcv.mode != 0) {
       start_sampling = false;
     }
 
     //Streaming mode
-    if(!rcv.mode) {
-      // Invio i valori ADC via UART
+    if(rcv.mode==2) {
+      // // Invio i valori ADC via UART
       for (uint8_t i = 0; i < rcv.channels; i++) {
-        sprintf(buffer, "%d %u\n", i, adc_values[i]);
+        sprintf(buffer, "%u %u\n", i, adc_values[i]);
         UART_putString((uint8_t*)buffer);
         memset(buffer, 0, sizeof(buffer));
       }
     }else{
-    // Buffer mode
-      if(start_sampling) {
+      // Buffer mode
+      // Si attende un comando via UART per avviare il sampling
+      if(!start_sampling){
+        UART_getString((uint8_t*)buffer);
+        memset(buffer, 0, sizeof(buffer));
+        start_sampling=true;
+      }
+      if(size+(int)rcv.channels*7<sizeof(buffer)){
         // Salvataggio dei valori ADC in un buffer per poi inviarli via UART quando pieno
         for (uint8_t i = 0; i < rcv.channels; i++) {
-          if(size>1000) {
-            break;
-          }
-          // Aggiungo i valori al buffer_2
-          sprintf(buffer_2, "%d %u\n", i, adc_values[i]);
-          buffer_2[7] = '\0';
           // Aggiungo i valori al buffer
-          size+=strlen(buffer_2)+1;
-          strcat(buffer, buffer_2);
-          memset(buffer_2, 0, sizeof(buffer_2));
+          size += sprintf(&buffer[size], "%u %u\n", i, adc_values[i]);
         }
-        // Invio del buffer via UART quando pieno
+      }else{
+        // Invio del buffer via UART quando pieno, ressentando il buffer appena inviato
         UART_putString((uint8_t*)buffer);
         memset(buffer, 0, sizeof(buffer));
         size = 0;
