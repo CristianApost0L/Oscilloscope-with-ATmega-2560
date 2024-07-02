@@ -16,6 +16,8 @@ volatile uint8_t current_channel = 0;
 volatile uint16_t adc_values[8];
 volatile bool start_sampling = false;
 volatile bool arrived_struct = false;
+volatile bool on = false;
+volatile uint8_t intensity = 0;
 
 void timer1_init(void);
 void adc_init(void);
@@ -28,20 +30,40 @@ void adc_init(void) {
   ADCSRA |= (1 << ADIE); // Abilita l'interrupt ADC
 }
 
-// Function to initialize Timer1, used update current reading every second
+// Inizializzazione del Timer2 per generare interrupt alla sample frequency
+void timer2_init(void) {
+    // Imposta Timer2 in modalità CTC
+    TCCR2A |= (1 << WGM21);
+    // Calcola il valore di comparazione per la frequenza di campionamento
+    OCR2A = (F_CPU / (1024 * rcv.sample_frequency) - 1);
+    // Abilita l'interrupt di confronto A
+    TIMSK2 |= (1 << OCIE2A);
+    // Abilita Timer2 con prescaler 1024
+    TCCR2B |= (1 << CS22) | (1 << CS21) | (1 << CS20);
+}
+
+// Init Timer1 per generare interrupt variabi
 void timer1_init(void) {
-  // Set CTC mode (Clear Timer on Compare Match)
-  TCCR1B |= (1 << WGM12);
-  // Set compare value for 1 Hz interrupt (assuming 16 MHz clock and 1024 prescaler)
-  OCR1A = (F_CPU / (1024 * rcv.sample_frequency) - 1);
-  // Enable Timer1 compare interrupt
-  TIMSK1 |= (1 << OCIE1A);
-  // Start Timer1 with 1024 prescaler
+  // Imposta il Timer1 in modalità CTC
+  TCCR1A = (1<<WGM10)|(1<<COM1C0)|(1<<COM1C1);
+  // Pulisce i registri di confronto
+  OCR1AH=0;
+  OCR1BH=0;
+  OCR1CH=0;
+  OCR1CL=1;
+  // Abilita gli interrupt di confronto C
+  TIMSK1 |= (1 << OCIE1C);
+  // Abilita il Timer1 con prescaler 1024
   TCCR1B |= (1 << CS12) | (1 << CS10);
 }
 
-// Ogni interrupt del Timer1 cambia il canale ADC e avvia una conversione
-ISR(TIMER1_COMPA_vect) {
+// Interrupt del Timer1 per cambiare il duty cycle
+ISR(TIMER1_COMPC_vect) {
+  intensity++;
+}
+
+// Ogni interrupt del Timer2 cambia il canale ADC e avvia una conversione
+ISR(TIMER2_COMPA_vect) {
   // Cambia il canale ADC
   ADMUX = (ADMUX & 0xF8) | (current_channel & 0x07);
   ADCSRA |= (1 << ADSC); // Avvia una conversione ADC
@@ -63,9 +85,16 @@ int main(void){
   uint8_t buffer_2[10];
   int size = 0;
 
+  // Il LED è collegato al pin 13 dell'Arduino
+  // è il bit 7 della porta B
+  const uint8_t mask=(1<<7);
+  // pin 13 come output
+  DDRB |= mask;//mask;
+
   UART_init(); // Inizializzazione per la UART
 
   while (1) {
+    OCR1CL=intensity; // vario il duty cycle
 
     if(!arrived_struct){
       // Ricezione della struct
@@ -76,6 +105,7 @@ int main(void){
 
       adc_init(); // Inizializzazione dell'ADC
       timer1_init(); // Inizializzazione del Timer1
+      timer2_init(); // Inizializzazione del Timer2
       sei();
       arrived_struct = true;
       memset(buffer, 0, sizeof(buffer));
@@ -104,7 +134,7 @@ int main(void){
           }
           // Aggiungo i valori al buffer_2
           sprintf(buffer_2, "%d %u\n", i, adc_values[i]);
-          buffer_2[6] = '\0';
+          buffer_2[7] = '\0';
           // Aggiungo i valori al buffer
           size+=strlen(buffer_2)+1;
           strcat(buffer, buffer_2);
