@@ -9,12 +9,13 @@ typedef struct {
   uint8_t channels;
   uint8_t mode;
 } __attribute__((packed)) __serial_data__;
-__serial_data__ rcv;
+volatile __serial_data__ rcv;
 
 // Variabili globali
 volatile uint8_t current_channel = 0;
 volatile uint16_t adc_values[8];
 volatile bool start_sampling = false;
+volatile bool arrived_struct = false;
 
 void timer1_init(void);
 void adc_init(void);
@@ -53,45 +54,45 @@ ISR(ADC_vect) {
 }
 
 // In buffer mode tramite UART viene avviato il sampling
-ISR(USART_RX_vect) {
+ISR(USART0_RX_vect) {
   start_sampling = true;
 }
 
 int main(void){
-  char buffer[1000];
+  uint8_t buffer[1000];
+  uint8_t buffer_2[10];
   int size = 0;
 
-  cli(); 
   UART_init(); // Inizializzazione per la UART
-  
-  // Inizializzazione della struct di ricezione
-  uint8_t usart_rx_buffer[4];
-  UART_getString(usart_rx_buffer);
-
-  rcv.sample_frequency = *((uint16_t*)&usart_rx_buffer);
-  rcv.channels = usart_rx_buffer[2];
-  rcv.mode = usart_rx_buffer[3];
-
-  rcv.sample_frequency = 1000;
-  rcv.channels = 8;
-  rcv.mode = 1;
-
-  adc_init(); // Inizializzazione dell'ADC
-  timer1_init(); // Inizializzazione del Timer1
-  sei();
-
-  if(rcv.mode != 0) {
-    start_sampling = false;
-  }
 
   while (1) {
+
+    if(!arrived_struct){
+      // Ricezione della struct
+      UART_getString((uint8_t*)buffer);
+      rcv.sample_frequency = *((uint16_t*)&buffer);
+      rcv.channels = buffer[2];
+      rcv.mode = buffer[3];
+
+      adc_init(); // Inizializzazione dell'ADC
+      timer1_init(); // Inizializzazione del Timer1
+      sei();
+      arrived_struct = true;
+      memset(buffer, 0, sizeof(buffer));
+    }
+
+    // Se il buffer mode è attivo, aspetta che l'utente invii qualcosa per iniziare il sampling
+    if(rcv.mode != 0) {
+      start_sampling = false;
+    }
+
     //Streaming mode
     if(!rcv.mode) {
-      memset(buffer, 0, sizeof(buffer));
       // Invio i valori ADC via UART
       for (uint8_t i = 0; i < rcv.channels; i++) {
         sprintf(buffer, "%d %u\n", i, adc_values[i]);
         UART_putString((uint8_t*)buffer);
+        memset(buffer, 0, sizeof(buffer));
       }
     }else{
     // Buffer mode
@@ -99,16 +100,20 @@ int main(void){
         // Salvataggio dei valori ADC in un buffer per poi inviarli via UART quando pieno
         for (uint8_t i = 0; i < rcv.channels; i++) {
           if(size>1000) {
-            UART_putString((uint8_t*)buffer);
-            memset(buffer, 0, sizeof(buffer));
-            size = 0;
+            break;
           }
-          char buffer_2[10];
-          sprintf(buffer_2, "%c %u\n", i, adc_values[i]);
-          size+=strlen(buffer_2);
+          // Aggiungo i valori al buffer_2
+          sprintf(buffer_2, "%d %u\n", i, adc_values[i]);
+          buffer_2[6] = '\0';
+          // Aggiungo i valori al buffer
+          size+=strlen(buffer_2)+1;
           strcat(buffer, buffer_2);
           memset(buffer_2, 0, sizeof(buffer_2));
         }
+        // Invio del buffer via UART quando pieno
+        UART_putString((uint8_t*)buffer);
+        memset(buffer, 0, sizeof(buffer));
+        size = 0;
       }
     }
   }
