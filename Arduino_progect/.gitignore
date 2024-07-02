@@ -4,6 +4,8 @@
 
 # Output file
 *.plt
+*.dat
+*.png
 
 # Executables
 *~
