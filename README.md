@@ -35,8 +35,8 @@ Contiene una serie di cartelle dei vari codici proposti a lezione durante l'anno
 ### Lato Arduino
 
    Deve essere possibile operare in due modalità:
-   - [ ] campionamento continuo 
-   - [ ] bufferizzare i dati per poi essere inviati a burst
+   - [X] campionamento continuo 
+   - [X] bufferizzare i dati per poi essere inviati a burst
 
 Tutte le comunicazioni avverranno in maniera asincrona tramite UART.
 
