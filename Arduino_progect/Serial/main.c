@@ -66,8 +66,11 @@ void populate_files() {
     if(file_number < 0 || file_number >= send.channels) {
       continue; // Ignora i campioni non validi
     }
+    float value = (float) number / 1024.0 * 5.0; // Conversione del valore del campione in tensione
+    memset(line, 0, sizeof(line)); // Pulizia del buffer
+    sprintf(line, "%f\n", value); // Scrittura del valore della tensione nel buffer
     // Scrittura del campione nel file del canale corrispondente
-    int bytes_write = fputs(line+2,file_pointer[file_number]);
+    int bytes_write = fputs(line,file_pointer[file_number]);
     if (bytes_write == EOF) {
       perror("Error writing to output file");
       return;
