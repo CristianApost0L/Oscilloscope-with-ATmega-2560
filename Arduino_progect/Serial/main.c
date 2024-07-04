@@ -19,7 +19,7 @@ int fd;
 __serial_data__ send;
 
 // Funzioni dichiarate
-void populate_files(const uint8_t* buf, int size);
+void populate_files(const uint8_t* buf);
 void handle_sigint(int sig);
 
 // Funzione per gestire il segnale SIGINT
@@ -51,18 +51,18 @@ void open_files(){
 }
 
 // Funzione che popola i singoli file con i dati ricevuti
-void populate_files(const uint8_t* buf, int size) {
+void populate_files(const uint8_t* buf) {
 
   int file_number, number;
-  sscanf(buf, "%d %d\n", &file_number, &number); // Scansiono la riga per ottenere il numero del canale e il valore del campionamento
+  sscanf((const char *)buf, "%d %d\n", &file_number, &number); // Scansiono la riga per ottenere il numero del canale e il valore del campionamento
   if(file_number < 0 || file_number >= send.channels) {
     return; // Ignora i campioni non validi
   }
   float value = (float) number / 1024.0 * 5.0; // Conversione del valore del campione in tensione
-  memset(buf, 0, sizeof(buf)); // Pulizia del buffer
-  sprintf(buf, "%f\n", value); // Scrittura del valore della tensione nel buffer
+  memset((void *) buf, 0, sizeof(buf)); // Pulizia del buffer
+  sprintf((char *)buf, "%f\n", value); // Scrittura del valore della tensione nel buffer
   // Scrittura del campione nel file del canale corrispondente
-  int bytes_write = fputs(buf,file_pointer[file_number]);
+  int bytes_write = fputs((const char *)buf,file_pointer[file_number]);
   if (bytes_write == EOF) {
     perror("Error writing to output file");
     return;
@@ -163,7 +163,7 @@ int main(int argc, const char** argv) {
       }
 
       // Popola i file con i dati ricevuti
-      populate_files(buf, bytes_read);
+      populate_files(buf);
 
     }
   }
