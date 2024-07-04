@@ -1,7 +1,7 @@
 #include "serial_linux.h"
 
 // FIle su cui stampare il risultato
-FILE * file_pointer[9];
+FILE * file_pointer[10];
 const char *file_name1 = "./data/datafile1.dat";
 const char *file_name2 = "./data/datafile2.dat";
 const char *file_name3 = "./data/datafile3.dat";
@@ -10,40 +10,35 @@ const char *file_name5 = "./data/datafile5.dat";
 const char *file_name6 = "./data/datafile6.dat";
 const char *file_name7 = "./data/datafile7.dat";
 const char *file_name8 = "./data/datafile8.dat";
-const char *file_name9 = "./data/data.dat";
 const char **filename[8] = {&file_name1, &file_name2, &file_name3, &file_name4, &file_name5, &file_name6, &file_name7, &file_name8};
 
+// File descriptor per la comunicazione seriale
 int fd;
 
 // Struct per l'invio dei dati all'Arduino
 __serial_data__ send;
 
 // Funzioni dichiarate
-void populate_files();
+void populate_files(const uint8_t* buf, int size);
 void handle_sigint(int sig);
 
 // Funzione per gestire il segnale SIGINT
 void handle_sigint(int sig) {
   printf("\nCaught signal %d (SIGINT). Save sampling on files...\n", sig);
+
+  // Chiusura della comunicazione seriale
   close(fd);
-
-
-  // Popola i file con i dati ricevuti
-  populate_files();
 
   // Chiusura dei file di output e dei file dati
   for(int i=0; i<send.channels; i++){
     fclose(file_pointer[i]);
   }
 
-  fclose(file_pointer[8]);
-
   exit(0);
 }
 
-// Funzione che popola i singoli file con i dati ricevuti
-void populate_files() {
-
+void open_files(){
+  // Apre i file di output per i singoli canali
   for(int i=0; i<send.channels; i++){
     file_pointer[i] = fopen(*filename[i], "w");
       // Verifica se l'apertura dei file è avvenuta correttamente
@@ -53,29 +48,26 @@ void populate_files() {
       return;
     }
   }
+}
 
-  fclose(file_pointer[8]);
-  file_pointer[8] = fopen(file_name9, "r");
+// Funzione che popola i singoli file con i dati ricevuti
+void populate_files(const uint8_t* buf, int size) {
 
-  printf("Populating files...\n");
-
-  char line[100];
-  while (fgets(line, sizeof(line), file_pointer[8])) {
-    int file_number, number;
-    sscanf(line, "%d %d\n", &file_number, &number); // Scansiono la riga per ottenere il numero del canale e il valore del campionamento
-    if(file_number < 0 || file_number >= send.channels) {
-      continue; // Ignora i campioni non validi
-    }
-    float value = (float) number / 1024.0 * 5.0; // Conversione del valore del campione in tensione
-    memset(line, 0, sizeof(line)); // Pulizia del buffer
-    sprintf(line, "%f\n", value); // Scrittura del valore della tensione nel buffer
-    // Scrittura del campione nel file del canale corrispondente
-    int bytes_write = fputs(line,file_pointer[file_number]);
-    if (bytes_write == EOF) {
-      perror("Error writing to output file");
-      return;
-    }
+  int file_number, number;
+  sscanf(buf, "%d %d\n", &file_number, &number); // Scansiono la riga per ottenere il numero del canale e il valore del campionamento
+  if(file_number < 0 || file_number >= send.channels) {
+    return; // Ignora i campioni non validi
   }
+  float value = (float) number / 1024.0 * 5.0; // Conversione del valore del campione in tensione
+  memset(buf, 0, sizeof(buf)); // Pulizia del buffer
+  sprintf(buf, "%f\n", value); // Scrittura del valore della tensione nel buffer
+  // Scrittura del campione nel file del canale corrispondente
+  int bytes_write = fputs(buf,file_pointer[file_number]);
+  if (bytes_write == EOF) {
+    perror("Error writing to output file");
+    return;
+  }
+  fflush(file_pointer[file_number]); // Scrive il buffer sul file
 }
 
 /*
@@ -97,16 +89,6 @@ int main(int argc, const char** argv) {
   assert(channel>0 && channel<=8);
   assert(sampling_frequency>0 && sampling_frequency<=65536);
   assert(buffer_mode==1 || buffer_mode==2);
-
-  // Apre il file che raccoglierà tutti i dati in modalità scrittura ("w")
-  file_pointer[8] = fopen(file_name9, "w");
-
-  // Verifica se l'apertura dei file è avvenuta correttamente
-  if(file_pointer[8] == NULL) {
-    char * message = "Errore durante l'apertura dei file.\n";
-    printf("%s",message);
-    return 1;
-  }
 
   // Apre la porta seriale e setta i parametri
   fd=serial_open(serial_device);
@@ -131,10 +113,13 @@ int main(int argc, const char** argv) {
   // Variabile per controllare se è stato inviato il carattere per iniziare il sampling nella buffer mode
   bool start_sampling = false;
 
+  // Preparazione del buffer di ricezione
+  uint8_t buf[1024] = {0};
+
   while(1) {
 
-    // Preparazione del buffer di ricezione
-    uint8_t buf[1024] = {0};
+    // Pulizia del buffer
+    memset(buf, 0, sizeof(buf));
 
     if(!start){
       // Dorme per 1s
@@ -152,6 +137,7 @@ int main(int argc, const char** argv) {
       }
       printf("Send data...\n");
       start=true;
+      open_files();
     }
 
     // Se il buffer mode è attivo, aspetta che l'utente invii un carattere per iniziare il sampling
@@ -175,13 +161,10 @@ int main(int argc, const char** argv) {
         perror("Error reading from file");
         return -1;
       }
-      
-      // Scrittura dei bytes provenienti dall'Arduino sul file di output 
-      int bytes_write = fputs((char*)buf,file_pointer[8]);
-      if (bytes_write == EOF) {
-        perror("Error writing to output file");
-        return -1;
-      }
+
+      // Popola i file con i dati ricevuti
+      populate_files(buf, bytes_read);
+
     }
   }
   
