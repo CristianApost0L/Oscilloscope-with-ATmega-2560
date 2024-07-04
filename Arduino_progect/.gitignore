@@ -3,7 +3,6 @@
 *.o
 
 # Output file
-*.plt
 *.dat
 *.png
 
