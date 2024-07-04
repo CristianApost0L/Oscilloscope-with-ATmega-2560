@@ -26,7 +26,7 @@ ISR(ADC_vect);
 
 void adc_init(void) {
   ADMUX = (1 << REFS0); // Usa AVCC come riferimento di tensione
-  ADCSRA = (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0); // Abilita ADC e prescaler 128, 125 kHz di frequenza di campionamento
+  ADCSRA = (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0); // Abilita ADC e prescaler 128, (F_CPU/128) = 125 kHz di frequenza di campionamento
   ADCSRA |= (1 << ADIE); // Abilita l'interrupt ADC
 }
 
