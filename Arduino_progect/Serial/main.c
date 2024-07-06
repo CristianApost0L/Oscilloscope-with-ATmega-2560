@@ -43,7 +43,7 @@ void open_files(){
     file_pointer[i] = fopen(*filename[i], "w");
       // Verifica se l'apertura dei file è avvenuta correttamente
     if(file_pointer[i] == NULL) {
-      char * message = "Errore durante l'apertura dei file.\n";
+      char * message = "Error opening file\n";
       printf("%s",message);
       return;
     }
@@ -125,7 +125,7 @@ int main(int argc, const char** argv) {
       // Dorme per 1s
       usleep(1000000);
 
-      printf("Sending data to Arduino...\n");
+      printf("Sending params to Arduino...\n");
 
       memcpy(buf, &send, sizeof(__serial_data__));
 
@@ -135,7 +135,9 @@ int main(int argc, const char** argv) {
         perror("Error writing to file");
         return -1;
       }
-      printf("Send data...\n");
+      if(send.mode==2){
+        printf("Receving data...\n");
+      }
       start=true;
       open_files();
     }
@@ -150,7 +152,7 @@ int main(int argc, const char** argv) {
         return -1;
       }
       start_sampling = true;
-
+      printf("Receving data...\n");
     }else{
       // Dorme per 5ms
       usleep(5000);
