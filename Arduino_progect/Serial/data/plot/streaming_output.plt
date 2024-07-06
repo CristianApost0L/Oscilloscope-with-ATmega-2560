@@ -1,4 +1,4 @@
-# gnuplot -persist output.plt
+# gnuplot -persist streaming_output.plt
 
 # Imposta il terminale di output
 set terminal pngcairo enhanced font "arial,10"
