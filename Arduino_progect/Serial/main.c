@@ -76,7 +76,7 @@ void populate_files(const uint8_t* buf) {
 
 int main(int argc, const char** argv) {
   if (argc<6) {
-    printf("serial_linux <serial_file> <baudrate> <sampling_frequency> <channel> <bufferd_mode 1 : 2>\n");
+    printf("serial_linux <serial_file> <baudrate> <sampling_frequency> <channel> <bufferd_mode 1 : streaming_mode 2>\n");
   }
 
   const char* serial_device=argv[1];
