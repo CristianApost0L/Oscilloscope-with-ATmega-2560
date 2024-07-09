@@ -97,10 +97,14 @@ int main(void){
 
     if(!arrived_struct){
       // Ricezione della struct
-      UART_getString((uint8_t*)buffer);
+
+      UART_getData((uint8_t*)&rcv, sizeof(rcv) +1);
+
+      // Errore nella UART_getString a causa di sampling_frequency minori di 256
+      /*UART_getString((uint8_t*)buffer);
       rcv.sample_frequency = *((uint16_t*)&buffer);
       rcv.channels = buffer[2];
-      rcv.mode = buffer[3];
+      rcv.mode = buffer[3];*/
 
       adc_init(); // Inizializzazione dell'ADC
       timer1_init(); // Inizializzazione del Timer1

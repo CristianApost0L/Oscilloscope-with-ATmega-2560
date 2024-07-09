@@ -54,3 +54,9 @@ void UART_putString(uint8_t* buf){
     ++buf;
   }
 }
+
+void UART_getData(uint8_t* buf, uint8_t size){
+  for(uint8_t i=0; i<size; i++){
+    buf[i]=UART_getChar();
+  }
+}

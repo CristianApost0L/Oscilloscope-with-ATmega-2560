@@ -26,3 +26,7 @@ uint8_t UART_getString(uint8_t* buf);
 //! @brief high level function (exposed)
 //!        writes a string until the first newline or 0
 void UART_putString(uint8_t* buf);
+
+//! @brief high level function (exposed)
+//!        data of a given size
+void UART_getData(uint8_t* buf, uint8_t size);
