@@ -1,3 +1,0 @@
-/home/cristian/Desktop/Sistemi Operativi/sistemi-operativi-Personale/Homework2/03_c_programming/exe_1/build/CMakeFiles/linked_list.dir
-/home/cristian/Desktop/Sistemi Operativi/sistemi-operativi-Personale/Homework2/03_c_programming/exe_1/build/CMakeFiles/edit_cache.dir
-/home/cristian/Desktop/Sistemi Operativi/sistemi-operativi-Personale/Homework2/03_c_programming/exe_1/build/CMakeFiles/rebuild_cache.dir

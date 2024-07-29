@@ -1,1 +1,0 @@
-/usr/bin/c++ -rdynamic CMakeFiles/mini_core.dir/many_object_in_stack_example.cpp.o -o mini_core  -Wl,-rpath,"/home/cristian/Desktop/Sistemi Operativi/sistemi-operativi-Personale/Homework1/exercise/exercise/mini_core/build/src" ../src/libcore_library.so 

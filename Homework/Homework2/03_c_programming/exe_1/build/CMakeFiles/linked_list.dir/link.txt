@@ -1,1 +1,0 @@
-/usr/bin/cc -rdynamic CMakeFiles/linked_list.dir/linked_list_test.c.o CMakeFiles/linked_list.dir/linked_list.c.o -o linked_list 

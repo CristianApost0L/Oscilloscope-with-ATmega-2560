@@ -1,8 +1,0 @@
-/home/cristian/Desktop/Sistemi Operativi/sistemi-operativi-Personale/Homework1/exercise/exercise/mini_core/build/CMakeFiles/edit_cache.dir
-/home/cristian/Desktop/Sistemi Operativi/sistemi-operativi-Personale/Homework1/exercise/exercise/mini_core/build/CMakeFiles/rebuild_cache.dir
-/home/cristian/Desktop/Sistemi Operativi/sistemi-operativi-Personale/Homework1/exercise/exercise/mini_core/build/src/CMakeFiles/core_library.dir
-/home/cristian/Desktop/Sistemi Operativi/sistemi-operativi-Personale/Homework1/exercise/exercise/mini_core/build/src/CMakeFiles/edit_cache.dir
-/home/cristian/Desktop/Sistemi Operativi/sistemi-operativi-Personale/Homework1/exercise/exercise/mini_core/build/src/CMakeFiles/rebuild_cache.dir
-/home/cristian/Desktop/Sistemi Operativi/sistemi-operativi-Personale/Homework1/exercise/exercise/mini_core/build/executables/CMakeFiles/mini_core.dir
-/home/cristian/Desktop/Sistemi Operativi/sistemi-operativi-Personale/Homework1/exercise/exercise/mini_core/build/executables/CMakeFiles/edit_cache.dir
-/home/cristian/Desktop/Sistemi Operativi/sistemi-operativi-Personale/Homework1/exercise/exercise/mini_core/build/executables/CMakeFiles/rebuild_cache.dir
